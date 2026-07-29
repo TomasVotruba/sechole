@@ -64,15 +64,7 @@ symfony/http-kernel 4.4.0 - 2 known CVEs
 
 <br>
 
-How to read it:
-
-- **`-` means clean** - no known vulnerability left on that branch. Above, `4.4.51` is one patch away and already clear, so there is no reason to jump to 6.x today.
-- **Counts can go up as you go up.** `5.1` has one CVE, `5.2` has two. Newer is not automatically safer, and that is the whole reason to see the list instead of a single suggestion.
-- **A count above 20 is bold** - that branch is not worth rescuing.
-- **The minor branch is bold, the patch part dimmed.** `4.4`.51 or `5.4`.53 - the branch is the decision, the patch is a detail.
-- **`Released` shows whether a branch is still alive.** A branch that has been clean and untouched since 2021 is often clean because nobody is looking at it.
-
-Nothing is picked for you. How far you are willing to jump is your call.
+Counts do not only go down as you move up: `5.1` has one CVE, `5.2` has two. Newer is not automatically safer, which is why you get the whole list instead of one suggestion. How far you are willing to jump is your call.
 
 <br>
 
