@@ -19,6 +19,8 @@ final class ConsolePrinter
 
     private const MIN_BLOCK_WIDTH = 40;
 
+    private const TABLE_WIDTH = 50;
+
     /**
      * @var array<string, string>
      */
@@ -33,6 +35,7 @@ final class ConsolePrinter
         'white' => '37',
         'gray' => '90',
         'bold' => '1',
+        'dim' => '2;90',
     ];
 
     /**
@@ -73,18 +76,6 @@ final class ConsolePrinter
         $this->writeln('<info>' . str_repeat('-', $this->getVisibleLength($text)) . '</>');
     }
 
-    /**
-     * @param string[] $items
-     */
-    public function listing(array $items): void
-    {
-        foreach ($items as $item) {
-            $this->writeln(' * ' . $item);
-        }
-
-        $this->writeln();
-    }
-
     public function success(string $text): void
     {
         $this->block('OK', $text, 'green', 'black');
@@ -113,7 +104,7 @@ final class ConsolePrinter
      */
     public function table(array $headers, array $rows, array $rightAlignedColumns = []): void
     {
-        $columnWidths = $this->resolveColumnWidths($headers, $rows);
+        $columnWidths = $this->equalizeColumnWidths($this->resolveColumnWidths($headers, $rows));
         $borderLine = $this->createBorderLine($columnWidths);
 
         $coloredHeaders = [];
@@ -176,6 +167,38 @@ final class ConsolePrinter
         }
 
         return $columnWidths;
+    }
+
+    /**
+     * Columns share the table width evenly - 3 columns, a third each - so a short
+     * table does not come out a cramped little box. Content still wins: a column
+     * wider than its share pushes the whole table past the target width.
+     *
+     * @param int[] $columnWidths
+     * @return int[]
+     */
+    private function equalizeColumnWidths(array $columnWidths): array
+    {
+        $columnCount = count($columnWidths);
+        if ($columnCount === 0) {
+            return $columnWidths;
+        }
+
+        // a border line spans $columnCount * ($width + 3) characters
+        $availableWidth = self::TABLE_WIDTH - 3 * $columnCount;
+        $sharedWidth = (int) floor($availableWidth / $columnCount);
+
+        $widestColumnWidth = max($columnWidths);
+        if ($widestColumnWidth > $sharedWidth) {
+            return array_fill(0, $columnCount, $widestColumnWidth);
+        }
+
+        $equalizedColumnWidths = array_fill(0, $columnCount, $sharedWidth);
+
+        // the rounding leftover goes to the last column, so the total lands exactly
+        $equalizedColumnWidths[$columnCount - 1] += $availableWidth - $sharedWidth * $columnCount;
+
+        return $equalizedColumnWidths;
     }
 
     /**

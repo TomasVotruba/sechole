@@ -1,10 +1,10 @@
 # SecHole
 
-Find known vulnerabilities in your `composer.lock` and get the closest safe version to upgrade to.
+Find known vulnerabilities in your `composer.lock`, and see exactly which upgrade gets rid of them.
 
 Scoped to the packages that matter most in a typical PHP project: **symfony**, **twig**, **doctrine** and **illuminate**.
 
-Runs on PHP 7.2 and up.
+Runs on PHP 7.2 and up, so you can point it at the old projects that need it most.
 
 <br>
 
@@ -25,44 +25,6 @@ bin/sechole /path/to/composer.lock
 bin/sechole /path/to/project
 ```
 
-```
-Checking 6 packages
-===================
-
-symfony/http-kernel 4.4.0 - 2 known CVEs
-----------------------------------------
- --------- ------------ ------------
-  Version   Known CVEs     Released
- --------- ------------ ------------
-   4.4.51         none   2023-11-10
-   5.0.11            2   2020-07-24
-   5.1.11            1   2021-01-27
-   5.2.14            2   2021-07-29
-   5.3.16            1   2022-03-01
-   5.4.53         none   2026-05-27
-   6.0.20         none   2023-02-01
- --------- ------------ ------------
-
- [ERROR] 5 vulnerable packages found
-```
-
-Every minor branch published above the version you have is listed with the number of known CVEs still affecting it and when it came out, so you can pick the upgrade you are willing to do - the nearest clean patch, or a bigger jump.
-
-<br>
-
-Want the actual CVEs? Add `--details`:
-
-```bash
-bin/sechole composer.lock --details
-```
-
-```
-symfony/http-kernel 4.4.0
--------------------------
-* [medium] CVE-2022-24894: Prevent storing cookie headers in HttpCache (CVE-2022-24894) https://symfony.com/cve-2022-24894
-* [high] CVE-2020-15094: Prevent RCE when calling untrusted remote with CachingHttpClient (CVE-2020-15094) https://symfony.com/cve-2020-15094
-```
-
 <br>
 
 Leave the path out and `composer.lock` in the current directory is used:
@@ -70,6 +32,46 @@ Leave the path out and `composer.lock` in the current directory is used:
 ```bash
 bin/sechole
 ```
+
+<br>
+
+## What you get
+
+Every vulnerable package gets its own table: one row per minor branch published above the version you have, showing how many known CVEs still hit it and when it came out.
+
+```
+Checking 6 packages
+===================
+
+symfony/http-kernel 4.4.0 - 2 known CVEs
+----------------------------------------
+
+ --------------- --------------- -----------------
+        Version      Known CVEs          Released
+ --------------- --------------- -----------------
+         4.4.51               -        2023-11-10
+         5.0.11               2        2020-07-24
+         5.1.11               1        2021-01-27
+         5.2.14               2        2021-07-29
+         5.3.16               1        2022-03-01
+         5.4.53               -        2026-05-27
+         6.0.20               -        2023-02-01
+         6.1.12               -        2023-02-01
+ --------------- --------------- -----------------
+
+ [ERROR] 5 vulnerable packages found
+```
+
+<br>
+
+Reading it:
+
+- `-` in the CVE column means no known vulnerability is left on that branch. Here `4.4.51` is a patch away and already clean - no major upgrade needed.
+- A count above 20 is printed in bold, because that branch is beyond saving.
+- The minor branch is bold and the patch part dimmed, so `4.4`.51 and `5.4`.53 line up as the real decision.
+- `Released` tells you whether a branch is still alive. A clean branch last touched in 2021 is clean because nobody looks at it anymore.
+
+No single "recommended" version is picked for you. How far you are willing to jump is your call.
 
 <br>
 
@@ -83,15 +85,10 @@ bin/sechole composer.lock
 
 <br>
 
-## How the numbers are worked out
+## Where the data comes from
 
-Advisories come from the [Packagist security advisories API](https://packagist.org/apidoc) - no account, no API token.
+The [Packagist security advisories API](https://packagist.org/apidoc) - no account, no API token, no local database to keep fresh.
 
-Each minor branch is represented by its **latest stable release**, because that is the version you would actually land on. Its constraint is matched against every advisory for that package, and the remaining CVEs are counted.
+Each minor branch is represented by its **latest stable release**, because that is the version you would actually land on. Advisory constraints are matched with `composer/semver`, the same resolver Composer itself uses.
 
-<br>
-
-Two things worth knowing:
-
-- `none` means no known CVE affects the latest release of that branch today. New advisories get published all the time, so re-run it.
-- Branches below the version you have are skipped, and so is your own version - only real upgrades are listed.
+New advisories get published all the time, so a clean run today is not a clean run next month. Put it in CI.

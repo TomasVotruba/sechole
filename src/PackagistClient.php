@@ -45,11 +45,7 @@ final class PackagistClient
         foreach ($advisoryItemsByPackageName as $packageName => $advisoryItems) {
             foreach ($advisoryItems as $advisoryItem) {
                 $advisoriesByPackageName[$packageName][] = new Advisory(
-                    isset($advisoryItem['title']) ? (string) $advisoryItem['title'] : 'Unknown',
-                    isset($advisoryItem['affectedVersions']) ? (string) $advisoryItem['affectedVersions'] : '*',
-                    isset($advisoryItem['cve']) ? (string) $advisoryItem['cve'] : null,
-                    isset($advisoryItem['severity']) ? (string) $advisoryItem['severity'] : null,
-                    isset($advisoryItem['link']) ? (string) $advisoryItem['link'] : null
+                    isset($advisoryItem['affectedVersions']) ? (string) $advisoryItem['affectedVersions'] : '*'
                 );
             }
         }

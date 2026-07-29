@@ -6,7 +6,6 @@ namespace SecHole\Command;
 
 use SecHole\ComposerLockParser;
 use SecHole\Console\ConsolePrinter;
-use SecHole\ValueObject\Advisory;
 use SecHole\ValueObject\MinorBranchReport;
 use SecHole\ValueObject\PackageReport;
 use SecHole\VulnerabilityAnalyser;
@@ -16,6 +15,11 @@ final class AuditCommand
     public const SUCCESS = 0;
 
     public const ERROR = 1;
+
+    /**
+     * @var int
+     */
+    private const ALARMING_ADVISORY_COUNT = 20;
 
     /**
      * @var ComposerLockParser
@@ -42,7 +46,7 @@ final class AuditCommand
         $this->consolePrinter = $consolePrinter;
     }
 
-    public function run(string $composerLockFilePath, bool $isDetailed = false): int
+    public function run(string $composerLockFilePath): int
     {
         $installedPackages = $this->composerLockParser->parse($composerLockFilePath);
 
@@ -73,11 +77,7 @@ final class AuditCommand
         }
 
         foreach ($vulnerablePackageReports as $packageReport) {
-            $this->renderPackageReport($packageReport, $isDetailed);
-        }
-
-        if (! $isDetailed) {
-            $this->consolePrinter->note('Run with <comment>--details</> to see advisory titles, CVEs and links');
+            $this->renderPackageReport($packageReport);
         }
 
         $this->consolePrinter->error(sprintf('%d vulnerable packages found', count($vulnerablePackageReports)));
@@ -85,7 +85,7 @@ final class AuditCommand
         return self::ERROR;
     }
 
-    private function renderPackageReport(PackageReport $packageReport, bool $isDetailed): void
+    private function renderPackageReport(PackageReport $packageReport): void
     {
         $this->consolePrinter->section(sprintf(
             '%s %s - %d known CVEs',
@@ -94,10 +94,6 @@ final class AuditCommand
             $packageReport->getAdvisoryCount()
         ));
         $this->consolePrinter->writeln();
-
-        if ($isDetailed) {
-            $this->renderAdvisories($packageReport);
-        }
 
         $this->renderUpgradeTable($packageReport);
     }
@@ -118,7 +114,7 @@ final class AuditCommand
             $rows[] = [
                 $this->createVersionCell($minorBranchReport),
                 $this->describeAdvisoryCount($minorBranchReport),
-                $minorBranchReport->getReleasedAt(),
+                '<gray>' . $minorBranchReport->getReleasedAt() . '</>',
             ];
         }
 
@@ -128,7 +124,7 @@ final class AuditCommand
     }
 
     /**
-     * The branch stands out, the patch part is only noise - 4.4<gray>.51</>
+     * The minor branch carries the signal, the patch part is noise - 4.4<dim>.51</>
      */
     private function createVersionCell(MinorBranchReport $minorBranchReport): string
     {
@@ -136,33 +132,25 @@ final class AuditCommand
         $patchPart = substr($minorBranchReport->getLatestVersion(), strlen($minorBranch));
 
         if ($patchPart === '' || $patchPart === false) {
-            return $minorBranch;
+            return '<bold>' . $minorBranch . '</>';
         }
 
-        return $minorBranch . '<gray>' . $patchPart . '</>';
+        return '<bold>' . $minorBranch . '</><dim>' . $patchPart . '</>';
     }
 
     private function describeAdvisoryCount(MinorBranchReport $minorBranchReport): string
     {
         if ($minorBranchReport->isClean()) {
-            return 'none';
+            return '<gray>-</>';
         }
 
-        return (string) $minorBranchReport->getAdvisoryCount();
-    }
+        $advisoryCount = $minorBranchReport->getAdvisoryCount();
 
-    private function renderAdvisories(PackageReport $packageReport): void
-    {
-        $lines = array_map(function (Advisory $advisory): string {
-            return sprintf(
-                '[%s] %s (%s) %s',
-                $advisory->getSeverity(),
-                $advisory->getTitle(),
-                $advisory->getCve(),
-                $advisory->getLink()
-            );
-        }, $packageReport->getAdvisories());
+        // a pile this big deserves to be noticed
+        if ($advisoryCount > self::ALARMING_ADVISORY_COUNT) {
+            return '<bold>' . $advisoryCount . '</>';
+        }
 
-        $this->consolePrinter->listing($lines);
+        return (string) $advisoryCount;
     }
 }

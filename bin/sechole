@@ -21,16 +21,10 @@ foreach ($autoloadFilePaths as $autoloadFilePath) {
 }
 
 $composerLockFilePath = 'composer.lock';
-$isDetailed = false;
 
 foreach (array_slice($argv, 1) as $argument) {
-    if ($argument === '--details') {
-        $isDetailed = true;
-        continue;
-    }
-
     if ($argument === '--help' || $argument === '-h') {
-        echo 'Usage: sechole [<composer.lock>|<project directory>] [--details]' . PHP_EOL;
+        echo 'Usage: sechole [<composer.lock>|<project directory>]' . PHP_EOL;
         exit(0);
     }
 
@@ -46,7 +40,7 @@ $auditCommand = new AuditCommand(
 );
 
 try {
-    exit($auditCommand->run($composerLockFilePath, $isDetailed));
+    exit($auditCommand->run($composerLockFilePath));
 } catch (SecHoleException $secHoleException) {
     $consolePrinter->error($secHoleException->getMessage());
     exit(AuditCommand::ERROR);

@@ -20,7 +20,7 @@ CI runs the suite on 7.2, 8.0 and 8.4, so anything newer breaks the build.
 
 - `bin/sechole` — entry point; parses `$argv`, wires services by hand, catches `SecHoleException`.
 - `src/Command/AuditCommand.php` — the audit run and all rendering decisions.
-- `src/Console/ConsolePrinter.php` — output: titles, sections, blocks, listings, tables. A small stand-in for Symfony Console's style, deliberately not a dependency.
+- `src/Console/ConsolePrinter.php` — output: titles, sections, blocks, tables. A small stand-in for Symfony Console's style, deliberately not a dependency.
 - `src/ComposerLockParser.php` — takes a lock file path *or* a project directory, keeps watched vendors from both `packages` and `packages-dev`.
 - `src/PackagistClient.php` — the only class touching the network: advisories API (one batched POST) and the p2 version list.
 - `src/AdvisoryMatcher.php` — pure version/constraint logic, no I/O. All recommendation rules live here.
@@ -32,7 +32,7 @@ CI runs the suite on 7.2, 8.0 and 8.4, so anything newer breaks the build.
 
 ```bash
 bin/sechole composer.lock             # run the audit
-bin/sechole composer.lock --details   # with advisory titles, CVEs, links
+bin/sechole /path/to/project          # or a directory holding a composer.lock
 vendor/bin/phpunit                    # tests
 php7.2 -l src/SomeFile.php            # verify the baseline still holds
 ```
@@ -46,6 +46,8 @@ php7.2 -l src/SomeFile.php            # verify the baseline still holds
 - Versions are stored without the `v` prefix; strip it at parse time, not at compare time.
 - Constraint matching goes through `composer/semver` (`Semver::satisfies`, `Comparator::greaterThan`). Never hand-roll version comparison.
 - Upgrade listing rule: group stable versions above the installed one by `major.minor`, represent each branch by its latest release, count the advisories still affecting it and carry its release date. No single "recommended" version is picked - that call is the user's.
-- The version cell renders as `4.4<gray>.51</>` - the branch is the signal, the patch part is muted.
+- The version cell renders as `<bold>4.4</><dim>.51</>` - the branch is the signal, the patch part is muted. A CVE count above 20 goes bold, a clean branch shows a gray `-`.
+- Tables are `TABLE_WIDTH` (50) wide with columns sharing that evenly. Content still wins: a column wider than its share pushes the table past the target rather than truncating.
+- `Advisory` carries only `affectedVersions`. Titles, CVE ids and links were dropped with the `--details` output - add them back to the value object if that output ever returns.
 - Exit `0` when clean, `1` when any package is vulnerable, so CI can gate on it.
 - `composer.lock` is not committed, so CI runs `composer update` per PHP version.

@@ -168,6 +168,6 @@ final class AdvisoryMatcherTest extends TestCase
 
     private function createAdvisory(string $affectedVersions): Advisory
     {
-        return new Advisory('Some advisory', $affectedVersions, null, null, null);
+        return new Advisory($affectedVersions);
     }
 }
