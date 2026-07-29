@@ -4,76 +4,84 @@ declare(strict_types=1);
 
 namespace SecHole\Command;
 
-use Entropy\Console\ConsoleTable\ConsoleTable;
-use Entropy\Console\Contract\CommandInterface;
-use Entropy\Console\Enum\ExitCode;
-use Entropy\Console\Output\OutputPrinter;
 use SecHole\ComposerLockParser;
+use SecHole\Console\ConsolePrinter;
 use SecHole\ValueObject\Advisory;
 use SecHole\ValueObject\PackageReport;
 use SecHole\VulnerabilityAnalyser;
 
-final readonly class AuditCommand implements CommandInterface
+final class AuditCommand
 {
-    public function __construct(
-        private ComposerLockParser $composerLockParser,
-        private VulnerabilityAnalyser $vulnerabilityAnalyser,
-        private OutputPrinter $outputPrinter,
-        private ConsoleTable $consoleTable
-    ) {
-    }
+    public const SUCCESS = 0;
 
-    public function getName(): string
-    {
-        return 'audit';
-    }
-
-    public function getDescription(): string
-    {
-        return 'List known vulnerabilities of symfony, twig, doctrine and illuminate packages in composer.lock';
-    }
+    public const ERROR = 1;
 
     /**
-     * @param string $composerLock Path to the composer.lock file.
-     * @param bool $details Print advisory titles, CVEs and links.
+     * @var ComposerLockParser
      */
-    public function run(string $composerLock = 'composer.lock', bool $details = false): int
+    private $composerLockParser;
+
+    /**
+     * @var VulnerabilityAnalyser
+     */
+    private $vulnerabilityAnalyser;
+
+    /**
+     * @var ConsolePrinter
+     */
+    private $consolePrinter;
+
+    public function __construct(
+        ComposerLockParser $composerLockParser,
+        VulnerabilityAnalyser $vulnerabilityAnalyser,
+        ConsolePrinter $consolePrinter
+    ) {
+        $this->composerLockParser = $composerLockParser;
+        $this->vulnerabilityAnalyser = $vulnerabilityAnalyser;
+        $this->consolePrinter = $consolePrinter;
+    }
+
+    public function run(string $composerLockFilePath, bool $isDetailed = false): int
     {
-        $installedPackages = $this->composerLockParser->parse($composerLock);
+        $installedPackages = $this->composerLockParser->parse($composerLockFilePath);
 
         if ($installedPackages === []) {
-            $this->outputPrinter->warning('No symfony, twig, doctrine or illuminate package found');
+            $this->consolePrinter->warning('No symfony, twig, doctrine or illuminate package found');
 
-            return ExitCode::SUCCESS;
+            return self::SUCCESS;
         }
 
-        $this->outputPrinter->title(sprintf('Checking %d packages', count($installedPackages)));
+        $packageCount = count($installedPackages);
+        $this->consolePrinter->title(sprintf('Checking %d %s', $packageCount, $packageCount === 1 ? 'package' : 'packages'));
 
         $packageReports = $this->vulnerabilityAnalyser->analyse($installedPackages);
+
         $vulnerablePackageReports = array_values(array_filter(
             $packageReports,
-            static fn (PackageReport $packageReport): bool => ! $packageReport->isClean()
+            function (PackageReport $packageReport): bool {
+                return ! $packageReport->isClean();
+            }
         ));
 
         if ($vulnerablePackageReports === []) {
-            $this->outputPrinter->success('No known vulnerability found');
+            $this->consolePrinter->success('No known vulnerability found');
 
-            return ExitCode::SUCCESS;
+            return self::SUCCESS;
         }
 
         $this->renderOverviewTable($vulnerablePackageReports);
 
-        if ($details) {
+        if ($isDetailed) {
             $this->renderDetails($vulnerablePackageReports);
         } else {
-            $this->outputPrinter->newline();
-            $this->outputPrinter->writeln('Run with --details to see advisory titles, CVEs and links');
+            $this->consolePrinter->writeln();
+            $this->consolePrinter->writeln('Run with --details to see advisory titles, CVEs and links');
         }
 
-        $this->outputPrinter->newline();
-        $this->outputPrinter->error(sprintf('%d vulnerable packages found', count($vulnerablePackageReports)));
+        $this->consolePrinter->writeln();
+        $this->consolePrinter->error(sprintf('%d vulnerable packages found', count($vulnerablePackageReports)));
 
-        return ExitCode::ERROR;
+        return self::ERROR;
     }
 
     /**
@@ -91,7 +99,7 @@ final readonly class AuditCommand implements CommandInterface
             ];
         }
 
-        $this->consoleTable->render(['Package', 'Current', 'Known CVEs', 'Recommended upgrade'], $rows);
+        $this->consolePrinter->table(['Package', 'Current', 'Known CVEs', 'Recommended upgrade'], $rows);
     }
 
     private function createRecommendation(PackageReport $packageReport): string
@@ -118,22 +126,22 @@ final readonly class AuditCommand implements CommandInterface
     private function renderDetails(array $packageReports): void
     {
         foreach ($packageReports as $packageReport) {
-            $this->outputPrinter->section(
+            $this->consolePrinter->writeln();
+            $this->consolePrinter->section(
                 $packageReport->getPackageName() . ' ' . $packageReport->getInstalledVersion()
             );
 
-            $lines = array_map(
-                static fn (Advisory $advisory): string => sprintf(
+            $lines = array_map(function (Advisory $advisory): string {
+                return sprintf(
                     '[%s] %s (%s) %s',
                     $advisory->getSeverity(),
                     $advisory->getTitle(),
                     $advisory->getCve(),
                     $advisory->getLink()
-                ),
-                $packageReport->getAdvisories()
-            );
+                );
+            }, $packageReport->getAdvisories());
 
-            $this->outputPrinter->listing($lines);
+            $this->consolePrinter->listing($lines);
         }
     }
 }

@@ -8,7 +8,7 @@ use Composer\Semver\Comparator;
 use Composer\Semver\Semver;
 use SecHole\ValueObject\Advisory;
 
-final readonly class AdvisoryMatcher
+final class AdvisoryMatcher
 {
     /**
      * @param Advisory[] $advisories
@@ -16,10 +16,11 @@ final readonly class AdvisoryMatcher
      */
     public function filterForVersion(array $advisories, string $version): array
     {
-        return array_values(array_filter(
-            $advisories,
-            static fn (Advisory $advisory): bool => Semver::satisfies($version, $advisory->getAffectedVersions())
-        ));
+        $matchedAdvisories = array_filter($advisories, function (Advisory $advisory) use ($version): bool {
+            return Semver::satisfies($version, $advisory->getAffectedVersions());
+        });
+
+        return array_values($matchedAdvisories);
     }
 
     /**

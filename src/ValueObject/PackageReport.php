@@ -4,17 +4,41 @@ declare(strict_types=1);
 
 namespace SecHole\ValueObject;
 
-final readonly class PackageReport
+final class PackageReport
 {
+    /**
+     * @var InstalledPackage
+     */
+    private $installedPackage;
+
+    /**
+     * @var Advisory[]
+     */
+    private $advisories;
+
+    /**
+     * @var string|null
+     */
+    private $recommendedVersion;
+
+    /**
+     * @var int
+     */
+    private $recommendedVersionAdvisoryCount;
+
     /**
      * @param Advisory[] $advisories
      */
     public function __construct(
-        private InstalledPackage $installedPackage,
-        private array $advisories,
-        private ?string $recommendedVersion,
-        private int $recommendedVersionAdvisoryCount
+        InstalledPackage $installedPackage,
+        array $advisories,
+        ?string $recommendedVersion,
+        int $recommendedVersionAdvisoryCount
     ) {
+        $this->installedPackage = $installedPackage;
+        $this->advisories = $advisories;
+        $this->recommendedVersion = $recommendedVersion;
+        $this->recommendedVersionAdvisoryCount = $recommendedVersionAdvisoryCount;
     }
 
     public function getPackageName(): string

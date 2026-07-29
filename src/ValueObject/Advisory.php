@@ -4,15 +4,45 @@ declare(strict_types=1);
 
 namespace SecHole\ValueObject;
 
-final readonly class Advisory
+final class Advisory
 {
+    /**
+     * @var string
+     */
+    private $title;
+
+    /**
+     * @var string
+     */
+    private $affectedVersions;
+
+    /**
+     * @var string|null
+     */
+    private $cve;
+
+    /**
+     * @var string|null
+     */
+    private $severity;
+
+    /**
+     * @var string|null
+     */
+    private $link;
+
     public function __construct(
-        private string $title,
-        private string $affectedVersions,
-        private ?string $cve,
-        private ?string $severity,
-        private ?string $link
+        string $title,
+        string $affectedVersions,
+        ?string $cve,
+        ?string $severity,
+        ?string $link
     ) {
+        $this->title = $title;
+        $this->affectedVersions = $affectedVersions;
+        $this->cve = $cve;
+        $this->severity = $severity;
+        $this->link = $link;
     }
 
     public function getTitle(): string

@@ -3,18 +3,51 @@
 
 declare(strict_types=1);
 
-use Entropy\Console\ConsoleApplication;
-use Entropy\Container\Container;
-foreach ([__DIR__ . '/../vendor/autoload.php', __DIR__ . '/../../../autoload.php'] as $autoloadFilePath) {
+use Composer\Semver\VersionParser;
+use SecHole\AdvisoryMatcher;
+use SecHole\Command\AuditCommand;
+use SecHole\ComposerLockParser;
+use SecHole\Console\ConsolePrinter;
+use SecHole\Exception\SecHoleException;
+use SecHole\PackagistClient;
+use SecHole\VulnerabilityAnalyser;
+
+$autoloadFilePaths = [__DIR__ . '/../vendor/autoload.php', __DIR__ . '/../../../autoload.php'];
+foreach ($autoloadFilePaths as $autoloadFilePath) {
     if (is_file($autoloadFilePath)) {
         require_once $autoloadFilePath;
         break;
     }
 }
 
-$container = new Container();
-$container->autodiscover(__DIR__ . '/../src');
+$composerLockFilePath = 'composer.lock';
+$isDetailed = false;
 
-$consoleApplication = $container->make(ConsoleApplication::class);
+foreach (array_slice($argv, 1) as $argument) {
+    if ($argument === '--details') {
+        $isDetailed = true;
+        continue;
+    }
 
-exit($consoleApplication->run($argv));
+    if ($argument === '--help' || $argument === '-h') {
+        echo 'Usage: sechole [composer.lock] [--details]' . PHP_EOL;
+        exit(0);
+    }
+
+    $composerLockFilePath = $argument;
+}
+
+$consolePrinter = new ConsolePrinter();
+
+$auditCommand = new AuditCommand(
+    new ComposerLockParser(),
+    new VulnerabilityAnalyser(new PackagistClient(new VersionParser()), new AdvisoryMatcher()),
+    $consolePrinter
+);
+
+try {
+    exit($auditCommand->run($composerLockFilePath, $isDetailed));
+} catch (SecHoleException $secHoleException) {
+    $consolePrinter->error($secHoleException->getMessage());
+    exit(AuditCommand::ERROR);
+}

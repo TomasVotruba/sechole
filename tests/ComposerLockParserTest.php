@@ -11,7 +11,10 @@ use SecHole\ValueObject\InstalledPackage;
 
 final class ComposerLockParserTest extends TestCase
 {
-    private ComposerLockParser $composerLockParser;
+    /**
+     * @var ComposerLockParser
+     */
+    private $composerLockParser;
 
     protected function setUp(): void
     {
@@ -22,10 +25,9 @@ final class ComposerLockParserTest extends TestCase
     {
         $installedPackages = $this->composerLockParser->parse(__DIR__ . '/Fixture/composer.lock');
 
-        $packageNames = array_map(
-            static fn (InstalledPackage $installedPackage): string => $installedPackage->getName(),
-            $installedPackages
-        );
+        $packageNames = array_map(function (InstalledPackage $installedPackage): string {
+            return $installedPackage->getName();
+        }, $installedPackages);
 
         $this->assertSame([
             'doctrine/dbal',

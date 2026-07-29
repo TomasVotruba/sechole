@@ -8,17 +8,22 @@ use Composer\Semver\VersionParser;
 use SecHole\Exception\SecHoleException;
 use SecHole\ValueObject\Advisory;
 
-final readonly class PackagistClient
+final class PackagistClient
 {
-    private const string ADVISORIES_URL = 'https://packagist.org/api/security-advisories/';
+    private const ADVISORIES_URL = 'https://packagist.org/api/security-advisories/';
 
-    private const string VERSIONS_URL = 'https://repo.packagist.org/p2/%s.json';
+    private const VERSIONS_URL = 'https://repo.packagist.org/p2/%s.json';
 
-    private const string USER_AGENT = 'sechole/1.0 (+https://packagist.org)';
+    private const USER_AGENT = 'sechole/1.0 (+https://packagist.org)';
 
-    public function __construct(
-        private VersionParser $versionParser
-    ) {
+    /**
+     * @var VersionParser
+     */
+    private $versionParser;
+
+    public function __construct(VersionParser $versionParser)
+    {
+        $this->versionParser = $versionParser;
     }
 
     /**
@@ -31,22 +36,20 @@ final readonly class PackagistClient
             return [];
         }
 
-        $postFields = http_build_query([
-            'packages' => array_values($packageNames),
-        ]);
+        $postFields = http_build_query(['packages' => array_values($packageNames)]);
 
         $response = $this->request(self::ADVISORIES_URL, $postFields);
-        $advisoryItemsByPackageName = $response['advisories'] ?? [];
+        $advisoryItemsByPackageName = isset($response['advisories']) ? $response['advisories'] : [];
 
         $advisoriesByPackageName = [];
         foreach ($advisoryItemsByPackageName as $packageName => $advisoryItems) {
             foreach ($advisoryItems as $advisoryItem) {
                 $advisoriesByPackageName[$packageName][] = new Advisory(
-                    (string) ($advisoryItem['title'] ?? 'Unknown'),
-                    (string) ($advisoryItem['affectedVersions'] ?? '*'),
-                    $advisoryItem['cve'] ?? null,
-                    $advisoryItem['severity'] ?? null,
-                    $advisoryItem['link'] ?? null,
+                    isset($advisoryItem['title']) ? (string) $advisoryItem['title'] : 'Unknown',
+                    isset($advisoryItem['affectedVersions']) ? (string) $advisoryItem['affectedVersions'] : '*',
+                    isset($advisoryItem['cve']) ? (string) $advisoryItem['cve'] : null,
+                    isset($advisoryItem['severity']) ? (string) $advisoryItem['severity'] : null,
+                    isset($advisoryItem['link']) ? (string) $advisoryItem['link'] : null
                 );
             }
         }
@@ -61,8 +64,10 @@ final readonly class PackagistClient
     {
         $response = $this->request(sprintf(self::VERSIONS_URL, $packageName));
 
+        $versionItems = isset($response['packages'][$packageName]) ? $response['packages'][$packageName] : [];
+
         $versions = [];
-        foreach ($response['packages'][$packageName] ?? [] as $versionItem) {
+        foreach ($versionItems as $versionItem) {
             $version = ltrim((string) $versionItem['version'], 'v');
 
             if (VersionParser::parseStability($version) !== 'stable') {
@@ -72,10 +77,10 @@ final readonly class PackagistClient
             $versions[] = $version;
         }
 
-        usort($versions, fn (string $left, string $right): int => version_compare(
-            $this->versionParser->normalize($left),
-            $this->versionParser->normalize($right)
-        ));
+        $versionParser = $this->versionParser;
+        usort($versions, function (string $left, string $right) use ($versionParser): int {
+            return version_compare($versionParser->normalize($left), $versionParser->normalize($right));
+        });
 
         return $versions;
     }
@@ -97,9 +102,7 @@ final readonly class PackagistClient
             $httpOptions['content'] = $postFields;
         }
 
-        $streamContext = stream_context_create([
-            'http' => $httpOptions,
-        ]);
+        $streamContext = stream_context_create(['http' => $httpOptions]);
 
         $responseContents = @file_get_contents($url, false, $streamContext);
         if ($responseContents === false) {

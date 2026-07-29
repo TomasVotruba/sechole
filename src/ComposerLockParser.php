@@ -7,12 +7,12 @@ namespace SecHole;
 use SecHole\Exception\SecHoleException;
 use SecHole\ValueObject\InstalledPackage;
 
-final readonly class ComposerLockParser
+final class ComposerLockParser
 {
     /**
      * @var string[]
      */
-    private const array WATCHED_VENDORS = ['symfony', 'twig', 'doctrine', 'illuminate'];
+    private const WATCHED_VENDORS = ['symfony', 'twig', 'doctrine', 'illuminate'];
 
     /**
      * @return InstalledPackage[]
@@ -24,13 +24,16 @@ final readonly class ComposerLockParser
         }
 
         $fileContents = (string) file_get_contents($composerLockFilePath);
-        $json = json_decode($fileContents, true, 512, JSON_THROW_ON_ERROR);
 
-        if (! is_array($json)) {
+        $json = json_decode($fileContents, true);
+        if (! is_array($json) || json_last_error() !== JSON_ERROR_NONE) {
             throw new SecHoleException(sprintf('File "%s" is not a valid composer.lock', $composerLockFilePath));
         }
 
-        $packageItems = [...$json['packages'] ?? [], ...$json['packages-dev'] ?? []];
+        $packageItems = array_merge(
+            isset($json['packages']) ? $json['packages'] : [],
+            isset($json['packages-dev']) ? $json['packages-dev'] : []
+        );
 
         $installedPackages = [];
         foreach ($packageItems as $packageItem) {
