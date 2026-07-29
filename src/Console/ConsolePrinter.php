@@ -113,7 +113,7 @@ final class ConsolePrinter
         }
 
         $this->writeln($borderLine);
-        $this->writeln($this->formatRow($coloredHeaders, $columnWidths, $rightAlignedColumns));
+        $this->writeln($this->formatHeaderRow($coloredHeaders, $columnWidths));
         $this->writeln($borderLine);
 
         foreach ($rows as $row) {
@@ -223,15 +223,43 @@ final class ConsolePrinter
     {
         $parts = [];
         foreach (array_values($row) as $columnPosition => $value) {
-            // pad by visible length, so tags do not shift the columns
-            $padding = str_repeat(' ', max(0, $columnWidths[$columnPosition] - $this->getVisibleLength($value)));
+            $paddingWidth = $this->resolvePaddingWidth($value, $columnWidths[$columnPosition]);
 
             $parts[] = in_array($columnPosition, $rightAlignedColumns, true)
-                ? $padding . $value
-                : $value . $padding;
+                ? str_repeat(' ', $paddingWidth) . $value
+                : $value . str_repeat(' ', $paddingWidth);
         }
 
         return '  ' . implode('   ', $parts);
+    }
+
+    /**
+     * Headings sit centered above their column, whichever way the cells lean.
+     *
+     * @param string[] $headers
+     * @param int[] $columnWidths
+     */
+    private function formatHeaderRow(array $headers, array $columnWidths): string
+    {
+        $parts = [];
+        foreach (array_values($headers) as $columnPosition => $header) {
+            $paddingWidth = $this->resolvePaddingWidth($header, $columnWidths[$columnPosition]);
+            $leftPaddingWidth = (int) floor($paddingWidth / 2);
+
+            $parts[] = str_repeat(' ', $leftPaddingWidth)
+                . $header
+                . str_repeat(' ', $paddingWidth - $leftPaddingWidth);
+        }
+
+        return rtrim('  ' . implode('   ', $parts));
+    }
+
+    /**
+     * Measured on the visible text, so tags never shift a column.
+     */
+    private function resolvePaddingWidth(string $value, int $columnWidth): int
+    {
+        return max(0, $columnWidth - $this->getVisibleLength($value));
     }
 
     private function format(string $text): string

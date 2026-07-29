@@ -1,10 +1,12 @@
 # SecHole
 
-Find known vulnerabilities in your `composer.lock`, and see exactly which upgrade gets rid of them.
+Find known vulnerabilities in a `composer.lock`, and see exactly which upgrade gets rid of them.
 
-Scoped to the packages that matter most in a typical PHP project: **symfony**, **twig**, **doctrine** and **illuminate**.
+Most audit tools tell you that you are vulnerable. This one tells you where to go: every branch you could upgrade to, and how many CVEs are waiting for you there.
 
-Runs on PHP 7.2 and up, so you can point it at the old projects that need it most.
+Scoped to the packages that carry the weight in a typical PHP project - **symfony**, **twig**, **doctrine** and **illuminate**.
+
+Runs on PHP 7.2 and up, so you can point it at the legacy projects that need it most.
 
 <br>
 
@@ -18,14 +20,12 @@ composer install
 
 ## Usage
 
-Point it at a `composer.lock`, or just at the project directory holding one:
+Point it at a `composer.lock`, or at the project directory holding one:
 
 ```bash
 bin/sechole /path/to/composer.lock
 bin/sechole /path/to/project
 ```
-
-<br>
 
 Leave the path out and `composer.lock` in the current directory is used:
 
@@ -37,7 +37,7 @@ bin/sechole
 
 ## What you get
 
-Every vulnerable package gets its own table: one row per minor branch published above the version you have, showing how many known CVEs still hit it and when it came out.
+One table per vulnerable package, one row per minor branch published above the version you have:
 
 ```
 Checking 6 packages
@@ -47,7 +47,7 @@ symfony/http-kernel 4.4.0 - 2 known CVEs
 ----------------------------------------
 
  --------------- --------------- -----------------
-        Version      Known CVEs          Released
+     Version       Known CVEs        Released
  --------------- --------------- -----------------
          4.4.51               -        2023-11-10
          5.0.11               2        2020-07-24
@@ -64,24 +64,27 @@ symfony/http-kernel 4.4.0 - 2 known CVEs
 
 <br>
 
-Reading it:
+How to read it:
 
-- `-` in the CVE column means no known vulnerability is left on that branch. Here `4.4.51` is a patch away and already clean - no major upgrade needed.
-- A count above 20 is printed in bold, because that branch is beyond saving.
-- The minor branch is bold and the patch part dimmed, so `4.4`.51 and `5.4`.53 line up as the real decision.
-- `Released` tells you whether a branch is still alive. A clean branch last touched in 2021 is clean because nobody looks at it anymore.
+- **`-` means clean** - no known vulnerability left on that branch. Above, `4.4.51` is one patch away and already clear, so there is no reason to jump to 6.x today.
+- **Counts can go up as you go up.** `5.1` has one CVE, `5.2` has two. Newer is not automatically safer, and that is the whole reason to see the list instead of a single suggestion.
+- **A count above 20 is bold** - that branch is not worth rescuing.
+- **The minor branch is bold, the patch part dimmed.** `4.4`.51 or `5.4`.53 - the branch is the decision, the patch is a detail.
+- **`Released` shows whether a branch is still alive.** A branch that has been clean and untouched since 2021 is often clean because nobody is looking at it.
 
-No single "recommended" version is picked for you. How far you are willing to jump is your call.
+Nothing is picked for you. How far you are willing to jump is your call.
 
 <br>
 
 ## Use it in CI
 
-The exit code is `0` when nothing was found and `1` when at least one package is vulnerable, so a build fails on a known CVE:
+Exit code is `0` when clean and `1` when any package is vulnerable, so a build fails on a known CVE:
 
 ```bash
 bin/sechole composer.lock
 ```
+
+New advisories land all the time, so a clean run today is not a clean run next month. This belongs in CI, not in your notes.
 
 <br>
 
@@ -89,6 +92,4 @@ bin/sechole composer.lock
 
 The [Packagist security advisories API](https://packagist.org/apidoc) - no account, no API token, no local database to keep fresh.
 
-Each minor branch is represented by its **latest stable release**, because that is the version you would actually land on. Advisory constraints are matched with `composer/semver`, the same resolver Composer itself uses.
-
-New advisories get published all the time, so a clean run today is not a clean run next month. Put it in CI.
+Each minor branch is represented by its **latest stable release**, because that is the version you would actually land on. Advisory constraints are matched with `composer/semver`, the same resolver Composer itself uses, so a range like `>=4.0.0,<4.4.50|>=5.0.0,<5.4.20` is read exactly as Composer reads it.
