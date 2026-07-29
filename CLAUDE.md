@@ -21,7 +21,7 @@ CI runs the suite on 7.2, 8.0 and 8.4, so anything newer breaks the build.
 - `bin/sechole` — entry point; parses `$argv`, wires services by hand, catches `SecHoleException`.
 - `src/Command/AuditCommand.php` — the audit run and all rendering decisions.
 - `src/Console/ConsolePrinter.php` — output: titles, sections, blocks, listings, tables. A small stand-in for Symfony Console's style, deliberately not a dependency.
-- `src/ComposerLockParser.php` — reads the lock file, keeps watched vendors from both `packages` and `packages-dev`.
+- `src/ComposerLockParser.php` — takes a lock file path *or* a project directory, keeps watched vendors from both `packages` and `packages-dev`.
 - `src/PackagistClient.php` — the only class touching the network: advisories API (one batched POST) and the p2 version list.
 - `src/AdvisoryMatcher.php` — pure version/constraint logic, no I/O. All recommendation rules live here.
 - `src/VulnerabilityAnalyser.php` — wires client and matcher into `PackageReport[]`.
@@ -45,6 +45,7 @@ php7.2 -l src/SomeFile.php            # verify the baseline still holds
 - Keep I/O in `PackagistClient`. Anything with version or constraint logic belongs in `AdvisoryMatcher`, which stays pure so it can be unit tested without mocks.
 - Versions are stored without the `v` prefix; strip it at parse time, not at compare time.
 - Constraint matching goes through `composer/semver` (`Semver::satisfies`, `Comparator::greaterThan`). Never hand-roll version comparison.
-- Upgrade listing rule: group stable versions above the installed one by `major.minor`, represent each branch by its latest release, count the advisories still affecting it. No single "recommended" version is picked - that call is the user's.
+- Upgrade listing rule: group stable versions above the installed one by `major.minor`, represent each branch by its latest release, count the advisories still affecting it and carry its release date. No single "recommended" version is picked - that call is the user's.
+- The version cell renders as `4.4<gray>.51</>` - the branch is the signal, the patch part is muted.
 - Exit `0` when clean, `1` when any package is vulnerable, so CI can gate on it.
 - `composer.lock` is not committed, so CI runs `composer update` per PHP version.

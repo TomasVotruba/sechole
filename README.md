@@ -18,8 +18,11 @@ composer install
 
 ## Usage
 
+Point it at a `composer.lock`, or just at the project directory holding one:
+
 ```bash
 bin/sechole /path/to/composer.lock
+bin/sechole /path/to/project
 ```
 
 ```
@@ -28,22 +31,22 @@ Checking 6 packages
 
 symfony/http-kernel 4.4.0 - 2 known CVEs
 ----------------------------------------
- -------- ---------------- ------------
-  Branch   Latest release   Known CVEs
- -------- ---------------- ------------
-  4.4      4.4.51           none
-  5.0      5.0.11           2
-  5.1      5.1.11           1
-  5.2      5.2.14           2
-  5.3      5.3.16           1
-  5.4      5.4.53           none
-  6.0      6.0.20           none
- -------- ---------------- ------------
+ --------- ------------ ------------
+  Version   Known CVEs     Released
+ --------- ------------ ------------
+   4.4.51         none   2023-11-10
+   5.0.11            2   2020-07-24
+   5.1.11            1   2021-01-27
+   5.2.14            2   2021-07-29
+   5.3.16            1   2022-03-01
+   5.4.53         none   2026-05-27
+   6.0.20         none   2023-02-01
+ --------- ------------ ------------
 
  [ERROR] 5 vulnerable packages found
 ```
 
-Every minor branch published above the version you have is listed with the number of known CVEs still affecting it, so you can pick the upgrade you are willing to do - the nearest clean patch, or a bigger jump.
+Every minor branch published above the version you have is listed with the number of known CVEs still affecting it and when it came out, so you can pick the upgrade you are willing to do - the nearest clean patch, or a bigger jump.
 
 <br>
 

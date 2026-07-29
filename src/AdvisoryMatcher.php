@@ -29,17 +29,19 @@ final class AdvisoryMatcher
      * so 2.8 installed lists 2.8, 3.0, 3.1, 3.2... each with its own advisory count.
      *
      * @param Advisory[] $advisories
-     * @param string[] $candidateVersions
+     * @param array<string, string> $releaseDatesByVersion version => release date
      * @return MinorBranchReport[] ascending by branch
      */
     public function resolveMinorBranches(
         string $installedVersion,
         array $advisories,
-        array $candidateVersions
+        array $releaseDatesByVersion
     ): array {
         $latestVersionByMinorBranch = [];
 
-        foreach ($candidateVersions as $candidateVersion) {
+        foreach (array_keys($releaseDatesByVersion) as $candidateVersion) {
+            $candidateVersion = (string) $candidateVersion;
+
             if (! Comparator::greaterThan($candidateVersion, $installedVersion)) {
                 continue;
             }
@@ -63,7 +65,8 @@ final class AdvisoryMatcher
             $minorBranchReports[] = new MinorBranchReport(
                 (string) $minorBranch,
                 $latestVersion,
-                count($this->filterForVersion($advisories, $latestVersion))
+                count($this->filterForVersion($advisories, $latestVersion)),
+                isset($releaseDatesByVersion[$latestVersion]) ? $releaseDatesByVersion[$latestVersion] : '-'
             );
         }
 

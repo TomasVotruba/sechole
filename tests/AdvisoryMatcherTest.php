@@ -54,7 +54,7 @@ final class AdvisoryMatcherTest extends TestCase
         $minorBranchReports = $this->advisoryMatcher->resolveMinorBranches(
             '2.8.0',
             $advisories,
-            ['2.8.1', '2.8.20', '3.0.0', '3.0.9', '3.1.0', '3.2.0', '3.2.5']
+            $this->createReleaseDates(['2.8.1', '2.8.20', '3.0.0', '3.0.9', '3.1.0', '3.2.0', '3.2.5'])
         );
 
         $this->assertSame(
@@ -68,7 +68,7 @@ final class AdvisoryMatcherTest extends TestCase
         $minorBranchReports = $this->advisoryMatcher->resolveMinorBranches(
             '2.8.0',
             [],
-            ['2.8.1', '2.8.20', '2.8.3', '3.0.9', '3.0.0']
+            $this->createReleaseDates(['2.8.1', '2.8.20', '2.8.3', '3.0.9', '3.0.0'])
         );
 
         $latestVersions = array_map(function (MinorBranchReport $minorBranchReport): string {
@@ -88,7 +88,7 @@ final class AdvisoryMatcherTest extends TestCase
         $minorBranchReports = $this->advisoryMatcher->resolveMinorBranches(
             '2.8.0',
             $advisories,
-            ['2.8.20', '3.0.9', '3.1.0']
+            $this->createReleaseDates(['2.8.20', '3.0.9', '3.1.0'])
         );
 
         $advisoryCounts = array_map(function (MinorBranchReport $minorBranchReport): int {
@@ -104,7 +104,7 @@ final class AdvisoryMatcherTest extends TestCase
         $minorBranchReports = $this->advisoryMatcher->resolveMinorBranches(
             '2.8.10',
             [],
-            ['2.6.0', '2.7.9', '2.8.10', '2.8.11']
+            $this->createReleaseDates(['2.6.0', '2.7.9', '2.8.10', '2.8.11'])
         );
 
         $this->assertSame(['2.8'], $this->resolveMinorBranches($minorBranchReports));
@@ -116,10 +116,29 @@ final class AdvisoryMatcherTest extends TestCase
         $minorBranchReports = $this->advisoryMatcher->resolveMinorBranches(
             '5.0.0',
             [],
-            ['4.4.0', '5.0.0']
+            $this->createReleaseDates(['4.4.0', '5.0.0'])
         );
 
         $this->assertSame([], $minorBranchReports);
+    }
+
+    public function testCarriesReleaseDateOfTheLatestRelease(): void
+    {
+        $minorBranchReports = $this->advisoryMatcher->resolveMinorBranches(
+            '2.8.0',
+            [],
+            ['2.8.1' => '2019-03-04', '2.8.20' => '2021-11-30', '3.0.0' => '2020-06-15']
+        );
+
+        $this->assertSame('2021-11-30', $minorBranchReports[0]->getReleasedAt());
+        $this->assertSame('2020-06-15', $minorBranchReports[1]->getReleasedAt());
+    }
+
+    public function testFallsBackWhenReleaseDateIsUnknown(): void
+    {
+        $minorBranchReports = $this->advisoryMatcher->resolveMinorBranches('2.8.0', [], ['3.0.0' => '-']);
+
+        $this->assertSame('-', $minorBranchReports[0]->getReleasedAt());
     }
 
     /**
@@ -131,6 +150,20 @@ final class AdvisoryMatcherTest extends TestCase
         return array_map(function (MinorBranchReport $minorBranchReport): string {
             return $minorBranchReport->getMinorBranch();
         }, $minorBranchReports);
+    }
+
+    /**
+     * @param string[] $versions
+     * @return array<string, string>
+     */
+    private function createReleaseDates(array $versions): array
+    {
+        $releaseDatesByVersion = [];
+        foreach ($versions as $version) {
+            $releaseDatesByVersion[$version] = '2020-01-01';
+        }
+
+        return $releaseDatesByVersion;
     }
 
     private function createAdvisory(string $affectedVersions): Advisory

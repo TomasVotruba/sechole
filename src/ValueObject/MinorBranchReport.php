@@ -25,11 +25,21 @@ final class MinorBranchReport
      */
     private $advisoryCount;
 
-    public function __construct(string $minorBranch, string $latestVersion, int $advisoryCount)
-    {
+    /**
+     * @var string
+     */
+    private $releasedAt;
+
+    public function __construct(
+        string $minorBranch,
+        string $latestVersion,
+        int $advisoryCount,
+        string $releasedAt
+    ) {
         $this->minorBranch = $minorBranch;
         $this->latestVersion = $latestVersion;
         $this->advisoryCount = $advisoryCount;
+        $this->releasedAt = $releasedAt;
     }
 
     public function getMinorBranch(): string
@@ -45,6 +55,11 @@ final class MinorBranchReport
     public function getAdvisoryCount(): int
     {
         return $this->advisoryCount;
+    }
+
+    public function getReleasedAt(): string
+    {
+        return $this->releasedAt;
     }
 
     public function isClean(): bool

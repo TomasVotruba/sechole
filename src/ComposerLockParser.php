@@ -15,13 +15,12 @@ final class ComposerLockParser
     private const WATCHED_VENDORS = ['symfony', 'twig', 'doctrine', 'illuminate'];
 
     /**
+     * @param string $path path to a composer.lock file, or to a project directory holding one
      * @return InstalledPackage[]
      */
-    public function parse(string $composerLockFilePath): array
+    public function parse(string $path): array
     {
-        if (! is_file($composerLockFilePath)) {
-            throw new SecHoleException(sprintf('File "%s" was not found', $composerLockFilePath));
-        }
+        $composerLockFilePath = $this->resolveComposerLockFilePath($path);
 
         $fileContents = (string) file_get_contents($composerLockFilePath);
 
@@ -48,6 +47,28 @@ final class ComposerLockParser
         ksort($installedPackages);
 
         return array_values($installedPackages);
+    }
+
+    /**
+     * Accepts both "/project/composer.lock" and "/project".
+     */
+    private function resolveComposerLockFilePath(string $path): string
+    {
+        if (is_dir($path)) {
+            $composerLockFilePath = rtrim($path, '/') . '/composer.lock';
+
+            if (! is_file($composerLockFilePath)) {
+                throw new SecHoleException(sprintf('No composer.lock found in "%s" directory', $path));
+            }
+
+            return $composerLockFilePath;
+        }
+
+        if (! is_file($path)) {
+            throw new SecHoleException(sprintf('File "%s" was not found', $path));
+        }
+
+        return $path;
     }
 
     private function isWatched(string $packageName): bool

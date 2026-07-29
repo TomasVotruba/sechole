@@ -58,7 +58,7 @@ final class PackagistClient
     }
 
     /**
-     * @return string[] stable versions, ascending
+     * @return array<string, string> stable version => release date (Y-m-d), ascending by version
      */
     public function fetchStableVersions(string $packageName): array
     {
@@ -66,7 +66,7 @@ final class PackagistClient
 
         $versionItems = isset($response['packages'][$packageName]) ? $response['packages'][$packageName] : [];
 
-        $versions = [];
+        $releaseDatesByVersion = [];
         foreach ($versionItems as $versionItem) {
             $version = ltrim((string) $versionItem['version'], 'v');
 
@@ -74,15 +74,18 @@ final class PackagistClient
                 continue;
             }
 
-            $versions[] = $version;
+            // "2020-10-27T15:34:22+00:00" -> "2020-10-27"
+            $releaseDatesByVersion[$version] = isset($versionItem['time'])
+                ? substr((string) $versionItem['time'], 0, 10)
+                : '-';
         }
 
         $versionParser = $this->versionParser;
-        usort($versions, function (string $left, string $right) use ($versionParser): int {
+        uksort($releaseDatesByVersion, function (string $left, string $right) use ($versionParser): int {
             return version_compare($versionParser->normalize($left), $versionParser->normalize($right));
         });
 
-        return $versions;
+        return $releaseDatesByVersion;
     }
 
     /**

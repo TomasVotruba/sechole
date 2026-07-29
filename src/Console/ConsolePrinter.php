@@ -31,6 +31,7 @@ final class ConsolePrinter
         'magenta' => '35',
         'cyan' => '36',
         'white' => '37',
+        'gray' => '90',
         'bold' => '1',
     ];
 

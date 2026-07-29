@@ -116,15 +116,30 @@ final class AuditCommand
         $rows = [];
         foreach ($minorBranchReports as $minorBranchReport) {
             $rows[] = [
-                $minorBranchReport->getMinorBranch(),
-                $minorBranchReport->getLatestVersion(),
+                $this->createVersionCell($minorBranchReport),
                 $this->describeAdvisoryCount($minorBranchReport),
+                $minorBranchReport->getReleasedAt(),
             ];
         }
 
         // versions and counts read better flush right
-        $this->consolePrinter->table(['Branch', 'Latest release', 'Known CVEs'], $rows, [0, 1, 2]);
+        $this->consolePrinter->table(['Version', 'Known CVEs', 'Released'], $rows, [0, 1, 2]);
         $this->consolePrinter->writeln();
+    }
+
+    /**
+     * The branch stands out, the patch part is only noise - 4.4<gray>.51</>
+     */
+    private function createVersionCell(MinorBranchReport $minorBranchReport): string
+    {
+        $minorBranch = $minorBranchReport->getMinorBranch();
+        $patchPart = substr($minorBranchReport->getLatestVersion(), strlen($minorBranch));
+
+        if ($patchPart === '' || $patchPart === false) {
+            return $minorBranch;
+        }
+
+        return $minorBranch . '<gray>' . $patchPart . '</>';
     }
 
     private function describeAdvisoryCount(MinorBranchReport $minorBranchReport): string

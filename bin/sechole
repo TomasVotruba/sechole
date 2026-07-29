@@ -30,7 +30,7 @@ foreach (array_slice($argv, 1) as $argument) {
     }
 
     if ($argument === '--help' || $argument === '-h') {
-        echo 'Usage: sechole [composer.lock] [--details]' . PHP_EOL;
+        echo 'Usage: sechole [<composer.lock>|<project directory>] [--details]' . PHP_EOL;
         exit(0);
     }
 

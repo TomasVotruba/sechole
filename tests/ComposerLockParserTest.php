@@ -51,11 +51,34 @@ final class ComposerLockParserTest extends TestCase
         $this->assertSame('2.10.0', $versionsByName['doctrine/dbal']);
     }
 
+    public function testAcceptsDirectoryHoldingComposerLock(): void
+    {
+        $fromDirectory = $this->composerLockParser->parse(__DIR__ . '/Fixture');
+        $fromFile = $this->composerLockParser->parse(__DIR__ . '/Fixture/composer.lock');
+
+        $this->assertEquals($fromFile, $fromDirectory);
+    }
+
+    public function testAcceptsDirectoryWithTrailingSlash(): void
+    {
+        $installedPackages = $this->composerLockParser->parse(__DIR__ . '/Fixture/');
+
+        $this->assertCount(5, $installedPackages);
+    }
+
     public function testThrowsOnMissingFile(): void
     {
         $this->expectException(SecHoleException::class);
         $this->expectExceptionMessage('File "missing.lock" was not found');
 
         $this->composerLockParser->parse('missing.lock');
+    }
+
+    public function testThrowsOnDirectoryWithoutComposerLock(): void
+    {
+        $this->expectException(SecHoleException::class);
+        $this->expectExceptionMessage('No composer.lock found in');
+
+        $this->composerLockParser->parse(__DIR__ . '/Fixture/EmptyProject');
     }
 }
