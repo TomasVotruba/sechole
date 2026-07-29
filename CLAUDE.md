@@ -20,7 +20,7 @@ CI runs the suite on 7.2, 8.0 and 8.4, so anything newer breaks the build.
 
 - `bin/sechole` — entry point; parses `$argv`, wires services by hand, catches `SecHoleException`.
 - `src/Command/AuditCommand.php` — the audit run and all rendering decisions.
-- `src/Console/ConsolePrinter.php` — output: table, sections, listings, ANSI status lines.
+- `src/Console/ConsolePrinter.php` — output: titles, sections, blocks, listings, tables. A small stand-in for Symfony Console's style, deliberately not a dependency.
 - `src/ComposerLockParser.php` — reads the lock file, keeps watched vendors from both `packages` and `packages-dev`.
 - `src/PackagistClient.php` — the only class touching the network: advisories API (one batched POST) and the p2 version list.
 - `src/AdvisoryMatcher.php` — pure version/constraint logic, no I/O. All recommendation rules live here.
@@ -40,6 +40,7 @@ php7.2 -l src/SomeFile.php            # verify the baseline still holds
 ## Conventions
 
 - No framework. Services are plain classes wired in `bin/sechole`; keep constructors explicit rather than adding a container.
+- Output text may carry Symfony-style tags - `<info>`, `<comment>`, `<error>`, `<fg=cyan>` closed by `</>`. `ConsolePrinter` turns them into ANSI on a TTY and strips them otherwise, and pads table cells by *visible* length so tags never shift a column. Never `strlen()` a tagged string.
 - Watched vendors are the `WATCHED_VENDORS` constant in `ComposerLockParser`. Change the scope there, nowhere else.
 - Keep I/O in `PackagistClient`. Anything with version or constraint logic belongs in `AdvisoryMatcher`, which stays pure so it can be unit tested without mocks.
 - Versions are stored without the `v` prefix; strip it at parse time, not at compare time.

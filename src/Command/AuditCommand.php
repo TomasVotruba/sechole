@@ -77,8 +77,7 @@ final class AuditCommand
         }
 
         if (! $isDetailed) {
-            $this->consolePrinter->writeln('Run with --details to see advisory titles, CVEs and links');
-            $this->consolePrinter->writeln();
+            $this->consolePrinter->note('Run with <comment>--details</> to see advisory titles, CVEs and links');
         }
 
         $this->consolePrinter->error(sprintf('%d vulnerable packages found', count($vulnerablePackageReports)));
@@ -94,6 +93,7 @@ final class AuditCommand
             $packageReport->getInstalledVersion(),
             $packageReport->getAdvisoryCount()
         ));
+        $this->consolePrinter->writeln();
 
         if ($isDetailed) {
             $this->renderAdvisories($packageReport);
@@ -122,7 +122,8 @@ final class AuditCommand
             ];
         }
 
-        $this->consolePrinter->table(['Branch', 'Latest release', 'Known CVEs'], $rows);
+        // versions and counts read better flush right
+        $this->consolePrinter->table(['Branch', 'Latest release', 'Known CVEs'], $rows, [0, 1, 2]);
         $this->consolePrinter->writeln();
     }
 
