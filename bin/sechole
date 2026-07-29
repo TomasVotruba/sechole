@@ -1,0 +1,20 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+use Entropy\Console\ConsoleApplication;
+use Entropy\Container\Container;
+foreach ([__DIR__ . '/../vendor/autoload.php', __DIR__ . '/../../../autoload.php'] as $autoloadFilePath) {
+    if (is_file($autoloadFilePath)) {
+        require_once $autoloadFilePath;
+        break;
+    }
+}
+
+$container = new Container();
+$container->autodiscover(__DIR__ . '/../src');
+
+$consoleApplication = $container->make(ConsoleApplication::class);
+
+exit($consoleApplication->run($argv));

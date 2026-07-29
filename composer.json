@@ -1,0 +1,30 @@
+{
+    "name": "tomas/sechole",
+    "type": "project",
+    "authors": [
+        {
+            "name": "Tomas Votruba",
+            "email": "tomas.vot@gmail.com"
+        }
+    ],
+    "require": {
+        "composer/semver": "^3.4",
+        "entropy/entropy": "^0.4.6"
+    },
+    "autoload": {
+        "psr-4": {
+            "SecHole\\": "src"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "SecHole\\Tests\\": "tests"
+        }
+    },
+    "bin": [
+        "bin/sechole"
+    ],
+    "require-dev": {
+        "phpunit/phpunit": "^13.2"
+    }
+}
