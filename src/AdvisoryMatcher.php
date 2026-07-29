@@ -7,6 +7,7 @@ namespace SecHole;
 use Composer\Semver\Comparator;
 use Composer\Semver\Semver;
 use SecHole\ValueObject\Advisory;
+use SecHole\ValueObject\MinorBranchReport;
 
 final class AdvisoryMatcher
 {
@@ -24,39 +25,55 @@ final class AdvisoryMatcher
     }
 
     /**
-     * Pick the lowest candidate version above the installed one that carries fewer advisories.
+     * Every minor branch above the installed version, represented by its latest release,
+     * so 2.8 installed lists 2.8, 3.0, 3.1, 3.2... each with its own advisory count.
      *
      * @param Advisory[] $advisories
-     * @param string[] $candidateVersions ascending
-     * @return array{0: string|null, 1: int} recommended version and its advisory count
+     * @param string[] $candidateVersions
+     * @return MinorBranchReport[] ascending by branch
      */
-    public function resolveBestVersion(
+    public function resolveMinorBranches(
         string $installedVersion,
         array $advisories,
         array $candidateVersions
     ): array {
-        $bestVersion = null;
-        $bestCount = count($this->filterForVersion($advisories, $installedVersion));
+        $latestVersionByMinorBranch = [];
 
         foreach ($candidateVersions as $candidateVersion) {
             if (! Comparator::greaterThan($candidateVersion, $installedVersion)) {
                 continue;
             }
 
-            $advisoryCount = count($this->filterForVersion($advisories, $candidateVersion));
-            if ($advisoryCount >= $bestCount) {
-                continue;
-            }
+            $minorBranch = $this->resolveMinorBranch($candidateVersion);
 
-            $bestVersion = $candidateVersion;
-            $bestCount = $advisoryCount;
+            $isNewer = ! isset($latestVersionByMinorBranch[$minorBranch])
+                || Comparator::greaterThan($candidateVersion, $latestVersionByMinorBranch[$minorBranch]);
 
-            // nothing better than zero known vulnerabilities
-            if ($advisoryCount === 0) {
-                break;
+            if ($isNewer) {
+                $latestVersionByMinorBranch[$minorBranch] = $candidateVersion;
             }
         }
 
-        return [$bestVersion, $bestCount];
+        uasort($latestVersionByMinorBranch, function (string $left, string $right): int {
+            return version_compare($left, $right);
+        });
+
+        $minorBranchReports = [];
+        foreach ($latestVersionByMinorBranch as $minorBranch => $latestVersion) {
+            $minorBranchReports[] = new MinorBranchReport(
+                (string) $minorBranch,
+                $latestVersion,
+                count($this->filterForVersion($advisories, $latestVersion))
+            );
+        }
+
+        return $minorBranchReports;
+    }
+
+    private function resolveMinorBranch(string $version): string
+    {
+        $versionParts = explode('.', $version);
+
+        return $versionParts[0] . '.' . (isset($versionParts[1]) ? $versionParts[1] : '0');
     }
 }

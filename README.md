@@ -26,18 +26,24 @@ bin/sechole /path/to/composer.lock
 Checking 6 packages
 ===================
 
- ------------------------- --------- ------------ ---------------------
-  Package                   Current   Known CVEs   Recommended upgrade
- ------------------------- --------- ------------ ---------------------
-  illuminate/database       8.0.0     3            8.40.0 (clean)
-  symfony/http-foundation   4.4.0     3            5.4.50 (clean)
-  symfony/http-kernel       4.4.0     2            4.4.50 (clean)
-  symfony/security-http     4.4.0     3            5.4.53 (clean)
-  twig/twig                 2.14.0    17           3.27.0 (clean)
- ------------------------- --------- ------------ ---------------------
+symfony/http-kernel 4.4.0 - 2 known CVEs
+----------------------------------------
+ -------- ---------------- ------------
+  Branch   Latest release   Known CVEs
+ -------- ---------------- ------------
+  4.4      4.4.51           none
+  5.0      5.0.11           2
+  5.1      5.1.11           1
+  5.2      5.2.14           2
+  5.3      5.3.16           1
+  5.4      5.4.53           none
+  6.0      6.0.20           none
+ -------- ---------------- ------------
 
  [ERROR] 5 vulnerable packages found
 ```
+
+Every minor branch published above the version you have is listed with the number of known CVEs still affecting it, so you can pick the upgrade you are willing to do - the nearest clean patch, or a bigger jump.
 
 <br>
 
@@ -74,17 +80,15 @@ bin/sechole composer.lock
 
 <br>
 
-## How the recommended version is picked
+## How the numbers are worked out
 
 Advisories come from the [Packagist security advisories API](https://packagist.org/apidoc) - no account, no API token.
 
-Every published version above the one you have is checked from the lowest up, and the first one carrying fewer known vulnerabilities wins. The search stops as soon as a completely clean version is found.
-
-So you get the smallest upgrade that actually helps, not "just go to latest".
+Each minor branch is represented by its **latest stable release**, because that is the version you would actually land on. Its constraint is matched against every advisory for that package, and the remaining CVEs are counted.
 
 <br>
 
 Two things worth knowing:
 
-- A recommendation may cross a major version (`twig/twig` 2.x to 3.x) when no release in your current branch is clean. That is a real upgrade, not a patch.
-- `none available` means every published version above yours is still affected.
+- `none` means no known CVE affects the latest release of that branch today. New advisories get published all the time, so re-run it.
+- Branches below the version you have are skipped, and so is your own version - only real upgrades are listed.

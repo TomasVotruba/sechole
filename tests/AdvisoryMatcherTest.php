@@ -7,6 +7,7 @@ namespace SecHole\Tests;
 use PHPUnit\Framework\TestCase;
 use SecHole\AdvisoryMatcher;
 use SecHole\ValueObject\Advisory;
+use SecHole\ValueObject\MinorBranchReport;
 
 final class AdvisoryMatcherTest extends TestCase
 {
@@ -46,63 +47,90 @@ final class AdvisoryMatcherTest extends TestCase
         yield 'patched version is clean' => ['4.4.50', 0];
     }
 
-    public function testRecommendsLowestCleanVersion(): void
+    public function testListsEveryMinorBranchAboveInstalledVersion(): void
     {
-        $advisories = [$this->createAdvisory('>=4.0.0,<4.4.50')];
+        $advisories = [$this->createAdvisory('>=2.0.0,<3.2.0')];
 
-        list($recommendedVersion, $advisoryCount) = $this->advisoryMatcher->resolveBestVersion(
-            '4.4.0',
+        $minorBranchReports = $this->advisoryMatcher->resolveMinorBranches(
+            '2.8.0',
             $advisories,
-            ['4.4.0', '4.4.20', '4.4.50', '4.4.60', '5.4.0']
+            ['2.8.1', '2.8.20', '3.0.0', '3.0.9', '3.1.0', '3.2.0', '3.2.5']
         );
 
-        $this->assertSame('4.4.50', $recommendedVersion);
-        $this->assertSame(0, $advisoryCount);
+        $this->assertSame(
+            ['2.8', '3.0', '3.1', '3.2'],
+            $this->resolveMinorBranches($minorBranchReports)
+        );
     }
 
-    public function testRecommendsVersionWithFewerAdvisoriesWhenNoneIsClean(): void
+    public function testRepresentsEachBranchByItsLatestRelease(): void
+    {
+        $minorBranchReports = $this->advisoryMatcher->resolveMinorBranches(
+            '2.8.0',
+            [],
+            ['2.8.1', '2.8.20', '2.8.3', '3.0.9', '3.0.0']
+        );
+
+        $latestVersions = array_map(function (MinorBranchReport $minorBranchReport): string {
+            return $minorBranchReport->getLatestVersion();
+        }, $minorBranchReports);
+
+        $this->assertSame(['2.8.20', '3.0.9'], $latestVersions);
+    }
+
+    public function testCountsAdvisoriesPerBranch(): void
     {
         $advisories = [
-            $this->createAdvisory('>=4.0.0,<4.4.50'),
-            $this->createAdvisory('>=4.0.0,<6.0.0'),
+            $this->createAdvisory('>=2.0.0,<3.1.0'),
+            $this->createAdvisory('>=2.0.0,<3.0.0'),
         ];
 
-        list($recommendedVersion, $advisoryCount) = $this->advisoryMatcher->resolveBestVersion(
-            '4.4.0',
+        $minorBranchReports = $this->advisoryMatcher->resolveMinorBranches(
+            '2.8.0',
             $advisories,
-            ['4.4.20', '4.4.50', '5.4.0']
+            ['2.8.20', '3.0.9', '3.1.0']
         );
 
-        $this->assertSame('4.4.50', $recommendedVersion);
-        $this->assertSame(1, $advisoryCount);
+        $advisoryCounts = array_map(function (MinorBranchReport $minorBranchReport): int {
+            return $minorBranchReport->getAdvisoryCount();
+        }, $minorBranchReports);
+
+        $this->assertSame([2, 1, 0], $advisoryCounts);
+        $this->assertTrue($minorBranchReports[2]->isClean());
     }
 
-    public function testReturnsNullWhenEveryHigherVersionIsAffected(): void
+    public function testSkipsVersionsBelowOrEqualToInstalledOne(): void
     {
-        $advisories = [$this->createAdvisory('>=4.0.0')];
-
-        list($recommendedVersion, $advisoryCount) = $this->advisoryMatcher->resolveBestVersion(
-            '4.4.0',
-            $advisories,
-            ['4.4.20', '5.4.0', '6.0.0']
+        $minorBranchReports = $this->advisoryMatcher->resolveMinorBranches(
+            '2.8.10',
+            [],
+            ['2.6.0', '2.7.9', '2.8.10', '2.8.11']
         );
 
-        $this->assertNull($recommendedVersion);
-        $this->assertSame(1, $advisoryCount);
+        $this->assertSame(['2.8'], $this->resolveMinorBranches($minorBranchReports));
+        $this->assertSame('2.8.11', $minorBranchReports[0]->getLatestVersion());
     }
 
-    public function testIgnoresVersionsBelowInstalledOne(): void
+    public function testReturnsNothingWhenNoNewerReleaseExists(): void
     {
-        $advisories = [$this->createAdvisory('>=4.4.0,<4.4.50')];
-
-        list($recommendedVersion, $advisoryCount) = $this->advisoryMatcher->resolveBestVersion(
-            '4.4.10',
-            $advisories,
-            ['4.3.0', '4.4.0', '4.4.50']
+        $minorBranchReports = $this->advisoryMatcher->resolveMinorBranches(
+            '5.0.0',
+            [],
+            ['4.4.0', '5.0.0']
         );
 
-        $this->assertSame('4.4.50', $recommendedVersion);
-        $this->assertSame(0, $advisoryCount);
+        $this->assertSame([], $minorBranchReports);
+    }
+
+    /**
+     * @param MinorBranchReport[] $minorBranchReports
+     * @return string[]
+     */
+    private function resolveMinorBranches(array $minorBranchReports): array
+    {
+        return array_map(function (MinorBranchReport $minorBranchReport): string {
+            return $minorBranchReport->getMinorBranch();
+        }, $minorBranchReports);
     }
 
     private function createAdvisory(string $affectedVersions): Advisory

@@ -17,28 +17,22 @@ final class PackageReport
     private $advisories;
 
     /**
-     * @var string|null
+     * @var MinorBranchReport[]
      */
-    private $recommendedVersion;
-
-    /**
-     * @var int
-     */
-    private $recommendedVersionAdvisoryCount;
+    private $minorBranchReports;
 
     /**
      * @param Advisory[] $advisories
+     * @param MinorBranchReport[] $minorBranchReports
      */
     public function __construct(
         InstalledPackage $installedPackage,
         array $advisories,
-        ?string $recommendedVersion,
-        int $recommendedVersionAdvisoryCount
+        array $minorBranchReports
     ) {
         $this->installedPackage = $installedPackage;
         $this->advisories = $advisories;
-        $this->recommendedVersion = $recommendedVersion;
-        $this->recommendedVersionAdvisoryCount = $recommendedVersionAdvisoryCount;
+        $this->minorBranchReports = $minorBranchReports;
     }
 
     public function getPackageName(): string
@@ -64,14 +58,12 @@ final class PackageReport
         return count($this->advisories);
     }
 
-    public function getRecommendedVersion(): ?string
+    /**
+     * @return MinorBranchReport[]
+     */
+    public function getMinorBranchReports(): array
     {
-        return $this->recommendedVersion;
-    }
-
-    public function getRecommendedVersionAdvisoryCount(): int
-    {
-        return $this->recommendedVersionAdvisoryCount;
+        return $this->minorBranchReports;
     }
 
     public function isClean(): bool

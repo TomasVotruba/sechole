@@ -7,6 +7,7 @@ namespace SecHole\Command;
 use SecHole\ComposerLockParser;
 use SecHole\Console\ConsolePrinter;
 use SecHole\ValueObject\Advisory;
+use SecHole\ValueObject\MinorBranchReport;
 use SecHole\ValueObject\PackageReport;
 use SecHole\VulnerabilityAnalyser;
 
@@ -52,7 +53,9 @@ final class AuditCommand
         }
 
         $packageCount = count($installedPackages);
-        $this->consolePrinter->title(sprintf('Checking %d %s', $packageCount, $packageCount === 1 ? 'package' : 'packages'));
+        $this->consolePrinter->title(
+            sprintf('Checking %d %s', $packageCount, $packageCount === 1 ? 'package' : 'packages')
+        );
 
         $packageReports = $this->vulnerabilityAnalyser->analyse($installedPackages);
 
@@ -69,79 +72,81 @@ final class AuditCommand
             return self::SUCCESS;
         }
 
-        $this->renderOverviewTable($vulnerablePackageReports);
-
-        if ($isDetailed) {
-            $this->renderDetails($vulnerablePackageReports);
-        } else {
-            $this->consolePrinter->writeln();
-            $this->consolePrinter->writeln('Run with --details to see advisory titles, CVEs and links');
+        foreach ($vulnerablePackageReports as $packageReport) {
+            $this->renderPackageReport($packageReport, $isDetailed);
         }
 
-        $this->consolePrinter->writeln();
+        if (! $isDetailed) {
+            $this->consolePrinter->writeln('Run with --details to see advisory titles, CVEs and links');
+            $this->consolePrinter->writeln();
+        }
+
         $this->consolePrinter->error(sprintf('%d vulnerable packages found', count($vulnerablePackageReports)));
 
         return self::ERROR;
     }
 
-    /**
-     * @param PackageReport[] $packageReports
-     */
-    private function renderOverviewTable(array $packageReports): void
+    private function renderPackageReport(PackageReport $packageReport, bool $isDetailed): void
     {
+        $this->consolePrinter->section(sprintf(
+            '%s %s - %d known CVEs',
+            $packageReport->getPackageName(),
+            $packageReport->getInstalledVersion(),
+            $packageReport->getAdvisoryCount()
+        ));
+
+        if ($isDetailed) {
+            $this->renderAdvisories($packageReport);
+        }
+
+        $this->renderUpgradeTable($packageReport);
+    }
+
+    private function renderUpgradeTable(PackageReport $packageReport): void
+    {
+        $minorBranchReports = $packageReport->getMinorBranchReports();
+
+        if ($minorBranchReports === []) {
+            $this->consolePrinter->writeln('No newer release published.');
+            $this->consolePrinter->writeln();
+
+            return;
+        }
+
         $rows = [];
-        foreach ($packageReports as $packageReport) {
+        foreach ($minorBranchReports as $minorBranchReport) {
             $rows[] = [
-                $packageReport->getPackageName(),
-                $packageReport->getInstalledVersion(),
-                (string) $packageReport->getAdvisoryCount(),
-                $this->createRecommendation($packageReport),
+                $minorBranchReport->getMinorBranch(),
+                $minorBranchReport->getLatestVersion(),
+                $this->describeAdvisoryCount($minorBranchReport),
             ];
         }
 
-        $this->consolePrinter->table(['Package', 'Current', 'Known CVEs', 'Recommended upgrade'], $rows);
+        $this->consolePrinter->table(['Branch', 'Latest release', 'Known CVEs'], $rows);
+        $this->consolePrinter->writeln();
     }
 
-    private function createRecommendation(PackageReport $packageReport): string
+    private function describeAdvisoryCount(MinorBranchReport $minorBranchReport): string
     {
-        $recommendedVersion = $packageReport->getRecommendedVersion();
-        if ($recommendedVersion === null) {
-            return 'none available';
+        if ($minorBranchReport->isClean()) {
+            return 'none';
         }
 
-        if ($packageReport->getRecommendedVersionAdvisoryCount() === 0) {
-            return $recommendedVersion . ' (clean)';
-        }
-
-        return sprintf(
-            '%s (%d left)',
-            $recommendedVersion,
-            $packageReport->getRecommendedVersionAdvisoryCount()
-        );
+        return (string) $minorBranchReport->getAdvisoryCount();
     }
 
-    /**
-     * @param PackageReport[] $packageReports
-     */
-    private function renderDetails(array $packageReports): void
+    private function renderAdvisories(PackageReport $packageReport): void
     {
-        foreach ($packageReports as $packageReport) {
-            $this->consolePrinter->writeln();
-            $this->consolePrinter->section(
-                $packageReport->getPackageName() . ' ' . $packageReport->getInstalledVersion()
+        $lines = array_map(function (Advisory $advisory): string {
+            return sprintf(
+                '[%s] %s (%s) %s',
+                $advisory->getSeverity(),
+                $advisory->getTitle(),
+                $advisory->getCve(),
+                $advisory->getLink()
             );
+        }, $packageReport->getAdvisories());
 
-            $lines = array_map(function (Advisory $advisory): string {
-                return sprintf(
-                    '[%s] %s (%s) %s',
-                    $advisory->getSeverity(),
-                    $advisory->getTitle(),
-                    $advisory->getCve(),
-                    $advisory->getLink()
-                );
-            }, $packageReport->getAdvisories());
-
-            $this->consolePrinter->listing($lines);
-        }
+        $this->consolePrinter->listing($lines);
     }
 }
